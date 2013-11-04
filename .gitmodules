@@ -1,0 +1,3 @@
+[submodule "Test/External/AFIncrementalStore"]
+	path = Test/External/AFIncrementalStore
+	url = git@github.com:xtremelabs/AFIncrementalStore.git

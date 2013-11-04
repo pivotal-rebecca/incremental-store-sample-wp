@@ -6,6 +6,7 @@
 //
 
 #import "ContextManager.h"
+#import "WordPressIncrementalStore.h"
 
 static ContextManager *instance;
 
@@ -47,7 +48,7 @@ static ContextManager *instance;
     _mainContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
     _mainContext.persistentStoreCoordinator = [self persistentStoreCoordinator];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mergeChangesIntoMainContext:) name:NSManagedObjectContextDidSaveNotification object:self.backgroundContext];
+//    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mergeChangesIntoMainContext:) name:NSManagedObjectContextDidSaveNotification object:self.backgroundContext];
     
     return _mainContext;
 }
@@ -123,7 +124,10 @@ static ContextManager *instance;
 	NSError *error = nil;
     
     _persistentStoreCoordinator = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[self managedObjectModel]];
-    [_persistentStoreCoordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:options error:&error];
+    WordPressIncrementalStore *incrementalStore = (WordPressIncrementalStore *)[_persistentStoreCoordinator addPersistentStoreWithType:[WordPressIncrementalStore type] configuration:nil URL:nil options:nil error:nil];
+    
+    [incrementalStore.backingPersistentStoreCoordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:options error:&error];
+    
     
     return _persistentStoreCoordinator;
 }

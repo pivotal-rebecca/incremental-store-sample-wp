@@ -7,8 +7,10 @@
 //
 
 #import "AppDelegate.h"
-#import "Thing.h"
+#import "Post.h"
 #import "ContextManager.h"
+#import "AFNetworkActivityIndicatorManager.h"
+#import "WordPressIncrementalStore.h"
 
 @interface Awesome : UITableViewController <UITableViewDataSource, UITableViewDelegate, NSFetchedResultsControllerDelegate>
 @property (nonatomic, strong) NSFetchedResultsController *r;
@@ -20,8 +22,11 @@
 {
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     
+    [[AFNetworkActivityIndicatorManager sharedManager] setEnabled:YES];
+    
     UIViewController *hello = [Awesome new];
-    self.window.rootViewController = hello;
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:hello];
+    self.window.rootViewController = nav;
     self.window.backgroundColor = [UIColor whiteColor];
     [self.window makeKeyAndVisible];
     return YES;
@@ -45,30 +50,26 @@ static NSString *const idCell = @"thingCell";
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(createPost)];
+    
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:idCell];
     
-    NSFetchRequest *fetch = [NSFetchRequest fetchRequestWithEntityName:@"Thing"];
-    fetch.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]];
+    NSFetchRequest *fetch = [NSFetchRequest fetchRequestWithEntityName:@"Post"];
+    fetch.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"postTitle" ascending:YES]];
     _r = [[NSFetchedResultsController alloc] initWithFetchRequest:fetch managedObjectContext:[ContextManager sharedInstance].mainContext sectionNameKeyPath:nil cacheName:nil];
     _r.delegate = self;
     [_r performFetch:nil];
+}
+
+- (void)createPost {
+    Post *new = [NSEntityDescription insertNewObjectForEntityForName:@"Post" inManagedObjectContext:_r.managedObjectContext];
+    new.postTitle = @"New Post";
+    new.postID = @"1";
+    new.status = @(0);
     
-    [self insertNew];
+    [_r.managedObjectContext insertObject:new];
+    [_r.managedObjectContext save:nil];
 }
-
-- (void)insertNew {
-    [[ContextManager sharedInstance].backgroundContext performBlock:^{
-        Thing *new = [NSEntityDescription insertNewObjectForEntityForName:@"Thing" inManagedObjectContext:[ContextManager sharedInstance].backgroundContext];
-        new.name = @"awesome";
-        [[ContextManager sharedInstance] saveWithContext:[ContextManager sharedInstance].backgroundContext];
-    }];
-    double delayInSeconds = 0.1;
-    dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delayInSeconds * NSEC_PER_SEC));
-    dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
-        [self insertNew];
-    });
-}
-
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     return 1;
@@ -80,8 +81,14 @@ static NSString *const idCell = @"thingCell";
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:idCell];
-    cell.textLabel.text = [_r.fetchedObjects[indexPath.row] name];
+    NSString *postTitle = [_r.fetchedObjects[indexPath.row] postTitle];
+    cell.textLabel.text = ![postTitle isEqualToString:@""] ? postTitle : @"(no title)";
     return cell;
+}
+
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    [_r.managedObjectContext deleteObject:[_r objectAtIndexPath:indexPath]];
+    [_r.managedObjectContext save:nil];
 }
 
 - (void)controllerDidChangeContent:(NSFetchedResultsController *)controller {
@@ -89,3 +96,4 @@ static NSString *const idCell = @"thingCell";
 }
 
 @end
+
